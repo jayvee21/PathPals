@@ -1,0 +1,12 @@
+{
+    "authorization": {
+        "enabled": true
+    }, 
+    "provided-apis":[
+        {
+            "name": "pathpals-api",
+            "description": "api exposed by PathPals mgmt app"
+        }
+    ],
+    "display-name": "pathpals-ias-myunique-id"
+}
