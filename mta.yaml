@@ -17,15 +17,27 @@ modules:
     parameters:
       instances: 1
       buildpack: nodejs_buildpack
+      routes:
+        - route: "${default-url}"
+        - route: "${default-host}.cert.${default-domain}"
     build-parameters:
       builder: npm-ci
     provides:
       - name: srv-api # required by consumers of CAP services (e.g. approuter)
         properties:
           srv-url: ${default-url}
+          srv-cert-url: '${protocol}://${default-host}.cert.${default-domain}'
     requires:
       - name: PathPals-db
-      - name: PathPals-auth
+      - name: auth-ams
+        parameters:
+          config:
+            credential-type: X509_GENERATED
+            app-identifier: srv
+    deployed-after:
+      - PathPals-ams-policies-deployer
+    properties:
+      AMS_DCL_ROOT: ams/dcl
 
   - name: PathPals-db-deployer
     type: hdb
@@ -35,18 +47,37 @@ modules:
     requires:
       - name: PathPals-db
 
+  - name: PathPals-ams-policies-deployer
+    type: javascript.nodejs
+    path: gen/policies
+    parameters:
+      buildpack: nodejs_buildpack
+      no-route: true
+      no-start: true
+      tasks:
+        - name: deploy-dcl
+          command: npm start
+          memory: 512M
+    requires:
+      - name: auth-ams
+        parameters:
+          config:
+            credential-type: X509_GENERATED
+            app-identifier: ams-policy-deployer
+
 resources:
   - name: PathPals-db
     type: com.sap.xs.hdi-container
     parameters:
       service: hana
       service-plan: hdi-shared
-  - name: PathPals-auth
+  - name: auth-ams
     type: org.cloudfoundry.managed-service
     parameters:
-      service: xsuaa
+      service: identity
+      service-name: auth-ams
       service-plan: application
-      path: ./xs-security.json
       config:
-        xsappname: PathPals-${org}-${space}
-        tenant-mode: dedicated
+        display-name: PathPals
+        authorization:
+          enabled: true
